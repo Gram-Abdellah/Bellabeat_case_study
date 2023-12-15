@@ -1,0 +1,333 @@
+---
+title: "Case Study on Bellabeat Utilizing R for Data Analysis and Visualization"
+author: "Abdellah Gram"
+date: "2023-12-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About a company
+
+Bellabeat, a high-tech manufacturer of health-focused products for women, and meet different characters and team members.Bellabeat lunched multiple products which became available
+through a growing number of online retailers in addition to their own e-commerce channel on their website.Bellbeat's marketing analytics team has benn asked to focus on a Bellabeat product and analyze smart device usage data in order to gain insight into how people are already using their smart devices. Then, using this information, the team must suggest a high-level recommendations for how these trends can inform Bellabeat marketing strategy.
+
+As a data analyst and In order to answer the key business questions, I will follow the steps of the data analysis process: **ask**, **prepare**, **process**, **analyze**, **share**, and **act**.
+
+## Ask
+### Guiding questions
+1. What are some trends in smart device usage?
+2. How could these trends apply to Bellabeat customers?
+3. How could these trends help influence Bellabeat marketing strategy?
+
+### Business task
+**Analyze** and **Identify**  the trends in the usage of non-bellabeat smart devices offered to the costumes. These trends and insights will guide and be included in the Bellabeat apps and services in order to satisfy the customers and offer them what they need
+
+## Prepare
+
+● **[FitBit Fitness Tracker Data](https://www.kaggle.com/datasets/arashnic/fitbit)** (CC0: Public Domain, dataset made available through Mobius): This Kaggle data set contains personal fitness tracker from thirty fitbit users. Thirty eligible Fitbit users consented to the submission of personal tracker data, including minute-level output for physical activity, heart rate, and sleep monitoring. It includes information about daily activity, steps, and heart rate that can be used to explore users’ habits. 
+
+### Loading packages 
+
+```{r }
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+### Importing datasets
+```{r, echo=TRUE}
+
+# Read CSV files
+activity<- read.csv("archive/Fitabase_Data2016/dailyActivity_merged.csv")
+daily_Calories<- read.csv("archive/Fitabase_Data2016/dailyCalories_merged.csv")
+hourly_Calories<- read.csv("archive/Fitabase_Data2016/hourlyCalories_merged.csv")
+daily_Steps <-read.csv("archive/Fitabase_Data2016/dailySteps_merged.csv")
+hourly_Steps <- read.csv("archive/Fitabase_Data2016/hourlySteps_merged.csv")
+daily_Sleep <-read.csv("archive/Fitabase_Data2016/sleepDay_merged.csv")
+```
+Now that we have six main datasets, we're ready to analyze user performance. Our focus will be on key metrics like activity intensity, calories, steps, and sleep. These datasets form the basis for gaining valuable insights into user behavior and overall well-being.
+
+
+### Exploring the datasets using the 'head()' function.
+```{r, echo=TRUE}
+head(daily_Calories)
+```
+
+Now, a problem arises as we encounter date formats that need to be reformatted from characters to dates for all dates and datasets 
+
+### Formatting 
+```{r, echo=TRUE}
+activity$ActivityDate <-format(activity$ActivityDate , format="%m%d%y")
+daily_Calories$ActivityDay <- as.Date(daily_Calories$ActivityDay, format = "%m/%d/%Y")
+daily_Steps$ActivityDay <- as.Date(daily_Steps$ActivityDay, format = "%m/%d/%Y")
+daily_Sleep$SleepDay <- as.POSIXct(daily_Sleep$SleepDay, format = "%m/%d/%Y %I:%M:%S %p")
+
+```
+
+
+Now to get more insights about our dataset, let's summarize its key characteristics.
+### summarizing datasets 
+```{r, echo=TRUE}
+n_distinct(activity$Id)
+n_distinct(daily_Calories$Id)
+n_distinct(daily_Steps$Id)
+n_distinct(daily_Sleep$Id)
+
+
+```
+
+As shown above, we examined data from 33 users in the activity, calories, and steps datasets, and 24 users in the sleep dataset. However, it's important to note that the sample size of 33 users may not be sufficient for drawing definitive data-based conclusions.
+
+
+```{r, echo=TRUE}
+# activity : Activity category per Distance 
+activity %>%
+  select(ActivityDate ,TotalSteps ,LightActiveDistance , VeryActiveDistance , Calories) %>%
+  summary()
+# activity : Activity category per Minutes
+activity %>%
+  select(ActivityDate ,TotalSteps ,VeryActiveMinutes , FairlyActiveMinutes, LightlyActiveMinutes    ,SedentaryMinutes , Calories) %>%
+  summary()
+
+
+```
+## Process
+
+R is an excellent tool for analyzing the Bellabeat case study data. R is a powerful and versatile programming language for statistical computing and data analysis. It offers a wide range of packages and libraries that make it well-suited for tasks such as data cleaning, exploration, visualization, and statistical modeling.
+
+Here are some reasons why R is a good choice for this case study:
+
+Data Manipulation and Analysis: R provides powerful tools for data manipulation and analysis. Packages like dplyr and tidyr are widely used for data cleaning and transformation.
+
+Statistical Analysis: R has a rich ecosystem of statistical packages for performing various statistical analyses. Common statistical tests, regression modeling, and hypothesis testing can be easily conducted in R.
+
+Visualization: R has excellent data visualization capabilities. The ggplot2 package is widely used for creating high-quality and customizable plots. Visualizations are crucial for exploring patterns in the data and communicating findings.
+
+Reproducibility: R Markdown allows you to create dynamic documents that combine code, text, and visualizations. This ensures that your analysis is reproducible, making it easier to share and present your findings.
+
+Community and Resources: R has a large and active community of users. There are numerous online resources, tutorials, and forums where you can seek help and guidance when working on your case study.
+
+
+## Analyze
+The First we aim to address in this analysis is:  **Is there a correlation between the distance covered and calories** expended? **
+
+```{r, echo=TRUE}
+# Calculate the correlation coefficient
+correlation <- cor(activity$TotalSteps, activity$Calories)
+correlation
+```
+
+A correlation coefficient of `r round(correlation ,2)` indicates a moderate positive correlation between the distance covered and calories expended. In other words, as the distance increases, there is a tendency for the calorie expenditure to also increase, and vice versa. 
+
+but ,  **What types of activities are most commonly practiced? **
+```{r, echo=TRUE}
+activities <- activity %>%
+    select('ActivityDate', 'VeryActiveDistance', 'ModeratelyActiveDistance', 'LightActiveDistance', 'SedentaryActiveDistance') %>%
+    summarise(
+      TotalVeryActiveDistance = mean(VeryActiveDistance),
+      TotalModeratelyActiveDistance = mean(ModeratelyActiveDistance),
+      TotalLightActiveDistance = mean(LightActiveDistance),
+      TotalSedentaryActiveDistance = mean(SedentaryActiveDistance)
+    )
+#per Distance
+  activities <- activity %>%
+    select('ActivityDate', 'VeryActiveDistance', 'ModeratelyActiveDistance', 'LightActiveDistance', 'SedentaryActiveDistance') %>%
+    summarise(
+      MeanVeryActiveDistance = mean(VeryActiveDistance),
+      MeanModeratelyActiveDistance = mean(ModeratelyActiveDistance),
+      MeanLightActiveDistance = mean(LightActiveDistance),
+      MeanSedentaryActiveDistance = mean(SedentaryActiveDistance)
+    )
+  
+
+activities_avgs <- c(activities$MeanVeryActiveDistance ,
+                     activities$MeanModeratelyActiveDistance,
+                     activities$MeanLightActiveDistance,
+                     activities$MeanSedentaryActiveDistance)
+activities_labs <- c('Very' , 'Moderately','Light','Sedentary')
+activities_data <- data.frame(ActivityLevel = activities_labs, AverageDistance =activities_avgs)
+    
+# Create a bar chart
+ggplot(activities_data, aes(x = ActivityLevel, y = AverageDistance, fill = ActivityLevel)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Distances for Each Activity Level",
+       x = "Activity",
+       y = "Average Distance") +
+  scale_fill_manual(values = c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3"),  # Color options
+                    name = "Activity Level") +
+  theme_minimal()
+
+```
+
+Based on the bar chart presented above, it is evident that light activities are the most commonly practiced, followed by very activities. moderate activities also exhibit a noticeable presence, while Sedentary intense activities are comparatively less frequently practiced.
+Now the question is **how Calories change Over time ?**
+
+
+
+```{r, echo=TRUE}
+avg_cal_per_date<- activity %>%
+  select('Calories', 'ActivityDate') %>%
+  group_by(ActivityDate) %>%
+  summarise(total_calories = mean(Calories)) 
+avg_cal_per_date$ActivityDate <- as.Date(avg_cal_per_date$ActivityDate, format = "%m/%d/%Y")
+
+# Order the data by date
+avg_cal_per_date <- avg_cal_per_date %>%
+  arrange(ActivityDate)
+
+avg_cal_per_date 
+
+ggplot(avg_cal_per_date, aes(x = ActivityDate, y = total_calories, group = 1)) +
+  geom_line() +
+  geom_point(data = avg_cal_per_date[seq(1, nrow(avg_cal_per_date), by = 2), ], aes(x = ActivityDate, y = total_calories), color = "red") +
+  labs(title = "Average Calories Over Time", x = "Date", y = "Average Calories") 
+```
+
+Observing the data, it appears that the calorie levels remain relatively stable over time. To delve deeper into the dynamics of calorie consumption, let's explore the daily calorie patterns of users, broken down by the hour.
+
+```{r, echo=TRUE}
+##Calories Over Time
+
+#per hour 
+avg_cal_per_hour<- hourly_Calories %>%
+  select('ActivityHour' , 'Calories') %>%
+  group_by(ActivityHour)%>%
+  summarise(Mean_calories =mean(Calories))
+
+#Format date time column
+avg_cal_per_hour$ActivityHour <- as.POSIXct(avg_cal_per_hour$ActivityHour, format = "%m/%d/%Y %I:%M:%S %p")
+    
+# Add a new column with the time portion
+avg_cal_per_hour$Time <- format(avg_cal_per_hour$ActivityHour, format = "%H:%M")
+avg_cal_per_hour <- avg_cal_per_hour %>%
+  arrange(Time)
+    
+# How Calories change Over hours Visualization
+ggplot(avg_cal_per_hour, aes(x = Time, y = Mean_calories, fill = Time)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Calories per hour",
+       x = "Hourse",
+       y = "Calories") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0),legend.position = "none")
+    
+```
+
+Here, we can pinpoint the hours when users burn more calories throughout the day, particularly during the active hours between 5:00 to 7:00 PM. By concentrating on this timeframe, we can tailor and enhance our services to better meet users' needs during their most active periods.
+
+The next question is: **How do users' daily step counts vary over the course of each hour?**
+
+```{r, echo=TRUE}
+#Steps per hour 
+avg_steps_per_hour <- hourly_Steps %>%
+  select('ActivityHour' ,'StepTotal') %>%
+  group_by(ActivityHour)%>%
+  summarise(MeanSteps = mean(StepTotal))
+
+#Formatting Date
+avg_steps_per_hour$ActivityHour <- as.POSIXct(avg_steps_per_hour$ActivityHour, format = "%m/%d/%Y %I:%M:%S %p")
+
+# Add a new column with the time portion
+avg_steps_per_hour$Time <- format(avg_steps_per_hour$ActivityHour, format = "%H:%M")    
+
+#Arrange Dataset
+avg_steps_per_hour %>%
+  arrange(Time)
+
+#Viz
+    
+ggplot(avg_steps_per_hour, aes(x = Time, y = MeanSteps)) +
+  geom_point() +
+  labs(title = "Average Steps per Day",
+       x = "Days",
+       y = "Average Steps") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 0))
+```
+
+
+Here, we observed that users tend to take more steps during the same (5 to 7 PM) period each day. The final aspect we'll analyze is the users' sleep patterns and the time they spend in bed.
+
+```{r, echo=TRUE}
+## Sleep
+    avg_daily_Sleep <- daily_Sleep %>%
+      select('SleepDay' , 'TotalSleepRecords' , 'TotalMinutesAsleep' , 'TotalTimeInBed' ) %>%
+      group_by(SleepDay) %>%
+      summarise(MeanSleepRecords = mean(TotalSleepRecords),
+                MeanMinutesAsleep = mean(TotalMinutesAsleep),
+                MeanTimeInBed = mean(TotalTimeInBed))
+    #Formatting Date
+    avg_daily_Sleep$SleepDay <- as.POSIXct(avg_daily_Sleep$SleepDay, format = "%m/%d/%Y %I:%M:%S %p")
+    # Add a new column with the Date portion
+    avg_daily_Sleep$Day <- format(avg_daily_Sleep$SleepDay, format = "%m/%d")  
+    #Data arrangement
+    avg_daily_Sleep <- avg_daily_Sleep %>%
+      arrange(Day)
+    #Viz
+    ggplot(avg_daily_Sleep, aes(x = Day, y = MeanMinutesAsleep/60)) +
+      geom_point() +
+      labs(title = "Average hours of sleep per Day",
+           x = "Days",
+           y = "Average hours") +
+      theme(axis.text.x = element_text(angle = 90, hjust = 0))
+    
+    #Sleep in days of the week
+    
+    avg_daily_Sleep$weekDay <- format(avg_daily_Sleep$SleepDay, format = "%a")
+    avg_sleep_weekDay <- avg_daily_Sleep %>%
+      select( 'MeanSleepRecords' , 'MeanMinutesAsleep','MeanTimeInBed','weekDay') %>%
+      group_by(weekDay) %>%
+      summarise(AvgMeanSleepRecords =mean(MeanSleepRecords) ,
+                AvgMeanMinutesAsleep =mean(MeanMinutesAsleep) ,
+                AvgMeanTimeInBed =mean(MeanTimeInBed) )
+    
+    avg_sleep_weekDay$weekDay <- factor(avg_sleep_weekDay$weekDay, levels = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+    
+    ggplot(avg_sleep_weekDay, aes(x = weekDay, y = AvgMeanMinutesAsleep/60 , fill = weekDay)) +
+      geom_bar(stat = "identity") +
+      labs(title = "Average hours of sleep per Dayweek",
+           x = "Days",
+           y = "Average Sleep hours") 
+    
+    
+    #Sleep Record vs time and Bed
+    #total Sleep vs time spend in bed
+  
+    ggplot(avg_sleep_weekDay, aes(x = weekDay)) +
+      geom_line(aes(y = AvgMeanMinutesAsleep/60, group = 1, color = "Avg Sleep Duration"), size = 1, linetype = "solid") +
+      geom_line(aes(y = AvgMeanTimeInBed/60, group = 1, color = "Avg Time in Bed"), size = 1, linetype = "solid") +
+      labs(title = "Average Sleep Duration vs. Average Time in Bed",
+           x = "Weekdays",
+           y = "Hours of Sleep") +
+      scale_color_manual(values = c("Avg Sleep Duration" = "blue", "Avg Time in Bed" = "red"),
+                         labels = c("Avg Sleep Duration", "Avg Time in Bed")) +
+      theme_minimal()
+```
+
+
+## Act
+### Business Recommendations
+**To resume this analysis, there is some the conclusions i found during this analysis : **
+
+* Our analysis revealed a positive correlation between total distance and calories, underscoring the importance of encouraging users to adopt personalized and effective fitness strategies. This insight is instrumental in guiding individuals towards achieving their fitness goals and maintaining a healthy lifestyle.
+
+* Given the prevalence of light activities among users, Bellabeat can strategically emphasize features aligning with these activities. This includes integrating functionalities such as step tracking, gentle exercise reminders, and comprehensive activity logging into Bellabeat products.
+
+* Users exhibit heightened calorie burn between 5:00 to 7:00 PM, presenting an opportunity for Bellabeat's marketing strategy. This information can be seamlessly integrated to highlight the platform's capability to support and motivate users during their most active hours, a persuasive selling point for those seeking solutions aligned with their daily routines.
+
+* The data can inform the development of new features or enhancements to existing features that specifically cater to users' needs during high-activity hours. For example, creating special challenges, rewards, or content designed to engage users during their peak activity times.
+
+* Users, on average, sleep between 5.5 and 7.7 hours. This falls within the generally recommended range for adults, allowing Bellabeat to use this information to assess users' sleep quality. Understanding sleep duration provides a foundation for offering tailored recommendations.
+
+* Building on the sleep duration insights, Bellabeat can enhance existing sleep-related features or introduce new ones. This could involve features supporting pre-sleep routines or offering insights into the correlation between pre-sleep activities and sleep quality.
+
+_It's crucial to note that the conclusions drawn are based on the sample used in this analysis. While these insights provide valuable direction, generalizing findings to the entire user population requires consideration of a broader dataset._
+
+**Thank you for your continued interest and attention!**
+
+
+
+
